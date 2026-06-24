@@ -18,6 +18,22 @@ param foundryAgentName string = ''
 @description('Foundry Hosted Agent instance identity principal ID. Leave empty before the hosted agent is created.')
 param hostedAgentPrincipalId string = ''
 
+@description('Microsoft Entra application client ID for Container Apps authentication. Leave empty to skip auth configuration.')
+param authClientId string = ''
+
+@description('Microsoft Entra tenant ID for Container Apps authentication.')
+param authTenantId string = tenant().tenantId
+
+@description('Container Apps secret name that stores the Microsoft Entra application client secret.')
+param authClientSecretName string = 'microsoft-provider-authentication-secret'
+
+@secure()
+@description('Microsoft Entra application client secret for Container Apps authentication. Leave empty to skip Bicep auth configuration.')
+param authClientSecret string = ''
+
+@description('Whether Bicep should create RBAC assignments. Set false when equivalent assignments already exist with different names.')
+param createRoleAssignments bool = true
+
 var resourceGroupName = 'rg-${namePrefix}-${environmentName}-${location}'
 
 resource resourceGroup 'Microsoft.Resources/resourceGroups@2024-11-01' = {
@@ -35,6 +51,11 @@ module app 'modules/app.bicep' = {
     containerImage: containerImage
     foundryAgentName: foundryAgentName
     hostedAgentPrincipalId: hostedAgentPrincipalId
+    authClientId: authClientId
+    authTenantId: authTenantId
+    authClientSecretName: authClientSecretName
+    authClientSecret: authClientSecret
+    createRoleAssignments: createRoleAssignments
   }
 }
 

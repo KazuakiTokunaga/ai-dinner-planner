@@ -10,8 +10,7 @@ from app.menu_repository import create_menu_repository
 
 INSTRUCTIONS = """
 あなたは夕食献立サジェスト AI エージェントです。
-登録済みメニューを第一候補として扱い、通常の献立推薦では Web 検索を使いません。
-ユーザーが新しいメニューや未登録候補を明示した場合だけ Web 検索の利用を検討します。
+登録済みメニューを優先しますが、ユーザーの指示に対応してWeb検索を利用してく亜d祭。
 材料リストを求められた場合は、必ず find_menus か get_menus で取得した材料をもとに答えてください。
 料理名や menu id が分かっている場合は、まず find_menus にその文字列を渡してください。
 """.strip()
@@ -91,6 +90,11 @@ def create_agent() -> Agent:
         client=client,
         name="ai-dinner-planner",
         instructions=INSTRUCTIONS,
-        tools=[search_menus, get_menus, find_menus],
+        tools=[
+            search_menus,
+            get_menus,
+            find_menus,
+            FoundryChatClient.get_web_search_tool(),
+        ],
         default_options={"store": False},
     )

@@ -6,6 +6,12 @@ param namePrefix string = 'aidinner'
 param containerImage string
 param foundryAgentName string = ''
 param hostedAgentPrincipalId string = ''
+param authClientId string = ''
+param authTenantId string = tenant().tenantId
+param authClientSecretName string = 'microsoft-provider-authentication-secret'
+@secure()
+param authClientSecret string = ''
+param createRoleAssignments bool = true
 
 var dashedName = '${namePrefix}-${environmentName}'
 var compactName = '${namePrefix}${environmentName}'
@@ -50,6 +56,7 @@ var azureAIDeveloperRoleDefinitionId = subscriptionResourceId(
   '64702f94-c441-49e6-a78b-ef80e0188fee'
 )
 var cosmosDataReaderRoleDefinitionId = '${cosmosAccount.id}/sqlRoleDefinitions/00000000-0000-0000-0000-000000000001'
+var authEnabled = !empty(authClientId) && !empty(authClientSecret)
 
 resource acr 'Microsoft.ContainerRegistry/registries@2025-05-01-preview' = {
   name: acrName
@@ -189,6 +196,12 @@ resource containerApp 'Microsoft.App/containerApps@2025-01-01' = {
         targetPort: 8000
         transport: 'auto'
       }
+      secrets: authEnabled ? [
+        {
+          name: authClientSecretName
+          value: authClientSecret
+        }
+      ] : []
     }
     template: {
       containers: [
@@ -235,7 +248,34 @@ resource containerApp 'Microsoft.App/containerApps@2025-01-01' = {
   }
 }
 
-resource containerAppAcrPull 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
+resource containerAppAuth 'Microsoft.App/containerApps/authConfigs@2025-07-01' = if (authEnabled) {
+  parent: containerApp
+  name: 'current'
+  properties: {
+    platform: {
+      enabled: true
+    }
+    globalValidation: {
+      unauthenticatedClientAction: 'RedirectToLoginPage'
+      redirectToProvider: 'azureActiveDirectory'
+    }
+    identityProviders: {
+      azureActiveDirectory: {
+        isAutoProvisioned: false
+        registration: {
+          clientId: authClientId
+          clientSecretSettingName: authClientSecretName
+          openIdIssuer: '${environment().authentication.loginEndpoint}${authTenantId}/v2.0'
+        }
+      }
+    }
+    login: {
+      preserveUrlFragmentsForLogins: false
+    }
+  }
+}
+
+resource containerAppAcrPull 'Microsoft.Authorization/roleAssignments@2022-04-01' = if (createRoleAssignments) {
   name: guid(acr.id, containerApp.id, 'AcrPull')
   scope: acr
   properties: {
@@ -245,7 +285,7 @@ resource containerAppAcrPull 'Microsoft.Authorization/roleAssignments@2022-04-01
   }
 }
 
-resource containerAppCosmosReader 'Microsoft.DocumentDB/databaseAccounts/sqlRoleAssignments@2025-05-01-preview' = {
+resource containerAppCosmosReader 'Microsoft.DocumentDB/databaseAccounts/sqlRoleAssignments@2025-05-01-preview' = if (createRoleAssignments) {
   parent: cosmosAccount
   name: guid(cosmosAccount.id, containerApp.id, 'Cosmos DB Built-in Data Reader')
   properties: {
@@ -255,7 +295,7 @@ resource containerAppCosmosReader 'Microsoft.DocumentDB/databaseAccounts/sqlRole
   }
 }
 
-resource containerAppFoundryUser 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
+resource containerAppFoundryUser 'Microsoft.Authorization/roleAssignments@2022-04-01' = if (createRoleAssignments) {
   name: guid(foundryAccount.id, containerApp.id, 'Cognitive Services User')
   scope: foundryAccount
   properties: {
@@ -265,7 +305,7 @@ resource containerAppFoundryUser 'Microsoft.Authorization/roleAssignments@2022-0
   }
 }
 
-resource containerAppFoundryOpenAIUser 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
+resource containerAppFoundryOpenAIUser 'Microsoft.Authorization/roleAssignments@2022-04-01' = if (createRoleAssignments) {
   name: guid(foundryAccount.id, containerApp.id, 'Cognitive Services OpenAI User')
   scope: foundryAccount
   properties: {
@@ -275,7 +315,7 @@ resource containerAppFoundryOpenAIUser 'Microsoft.Authorization/roleAssignments@
   }
 }
 
-resource containerAppFoundryProjectDeveloper 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
+resource containerAppFoundryProjectDeveloper 'Microsoft.Authorization/roleAssignments@2022-04-01' = if (createRoleAssignments) {
   name: guid(foundryProject.id, containerApp.id, 'Azure AI Developer')
   scope: foundryProject
   properties: {
@@ -285,7 +325,7 @@ resource containerAppFoundryProjectDeveloper 'Microsoft.Authorization/roleAssign
   }
 }
 
-resource foundryProjectAcrRepositoryReader 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
+resource foundryProjectAcrRepositoryReader 'Microsoft.Authorization/roleAssignments@2022-04-01' = if (createRoleAssignments) {
   name: guid(acr.id, foundryProject.id, 'Container Registry Repository Reader')
   scope: acr
   properties: {
@@ -295,7 +335,7 @@ resource foundryProjectAcrRepositoryReader 'Microsoft.Authorization/roleAssignme
   }
 }
 
-resource hostedAgentCosmosReader 'Microsoft.DocumentDB/databaseAccounts/sqlRoleAssignments@2025-05-01-preview' = if (!empty(hostedAgentPrincipalId)) {
+resource hostedAgentCosmosReader 'Microsoft.DocumentDB/databaseAccounts/sqlRoleAssignments@2025-05-01-preview' = if (createRoleAssignments && !empty(hostedAgentPrincipalId)) {
   parent: cosmosAccount
   name: guid(cosmosAccount.id, hostedAgentPrincipalId, 'Cosmos DB Built-in Data Reader')
   properties: {
