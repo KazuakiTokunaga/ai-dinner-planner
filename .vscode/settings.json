@@ -1,0 +1,25 @@
+{
+    // Python path
+    "python.defaultInterpreterPath": "${workspaceFolder}/.venv/bin/python",
+
+    "[python]": {
+        "editor.formatOnSave": true,
+        "editor.codeActionsOnSave": {
+            "source.fixAll": "explicit",
+            "source.organizeImports": "explicit"
+        },
+        "editor.defaultFormatter": "charliermarsh.ruff"
+    },
+
+    // ruff path
+    "ruff.path": ["${workspaceFolder}/.venv/bin/ruff"],
+    "ruff.lint.args": [
+        "--config=pyproject.toml"
+    ],
+        
+    // mypy
+    "mypy-type-checker.path": ["${workspaceFolder}/.venv/bin/mypy"],
+    "mypy-type-checker.args": [
+        "--config-file=pyproject.toml"
+    ],
+}

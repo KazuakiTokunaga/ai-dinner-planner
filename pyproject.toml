@@ -1,0 +1,29 @@
+[project]
+name = "ai-dinner-planner"
+version = "0.1.0"
+description = "夕食献立サジェスト AI エージェント"
+readme = "README.md"
+requires-python = ">=3.14"
+dependencies = [
+	"agent-framework-foundry>=1.0.0b0",
+	"agent-framework-foundry-hosting>=1.0.0a260618",
+	"azure-ai-agentserver-responses>=1.0.0b7",
+	"azure-cosmos>=4.14.0",
+	"azure-identity>=1.25.1",
+	"fastapi>=0.124.0",
+	"mcp>=1.24.0,<2",
+	"pydantic-settings>=2.12.0",
+	"uvicorn[standard]>=0.38.0",
+]
+
+[dependency-groups]
+dev = [
+	"ruff>=0.14.8",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py314"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]

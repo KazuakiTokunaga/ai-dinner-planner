@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>AI Dinner Planner</title>
+    <link rel="stylesheet" href="/static/styles.css" />
+  </head>
+  <body>
+    <main class="app-shell">
+      <section class="chat-panel" aria-label="夕食献立チャット">
+        <header class="panel-header">
+          <div>
+            <p class="eyebrow">Dinner Planner</p>
+            <h1>今夜の献立</h1>
+          </div>
+          <div class="status" id="sourceStatus">local</div>
+        </header>
+        <div class="messages" id="messages" aria-live="polite"></div>
+        <form class="composer" id="chatForm">
+          <input
+            id="messageInput"
+            name="message"
+            type="text"
+            autocomplete="off"
+            placeholder="例: 鶏肉を使ったメニューを何かあげて"
+            required
+          />
+          <button type="submit">送信</button>
+        </form>
+      </section>
+      <aside class="menu-panel" aria-label="検索ショートカット">
+        <button data-prompt="鶏肉を使ったメニューを何かあげて">鶏肉</button>
+        <button data-prompt="ホットクックで作れるメニューを提案して">ホットクック</button>
+        <button data-prompt="冬向けの鍋メニューを出して">鍋</button>
+        <button data-prompt="cream-stew の材料を教えて">材料</button>
+      </aside>
+    </main>
+    <script src="/static/app.js" type="module"></script>
+  </body>
+</html>

@@ -1,0 +1,122 @@
+[
+    {
+        "id": "beef-stew",
+        "name": "ビーフシチュー",
+        "cook_with": "ホットクック",
+        "main_ingredient": "牛肉",
+        "category": "カレー・シチュー",
+        "is_high_effort": false,
+        "uses_perishable_ingredients": false,
+        "seasonality": "all_year",
+        "ingredients": [
+            {
+                "name": "牛すね肉",
+                "quantity": "250グラム"
+            },
+            {
+                "name": "じゃがいも",
+                "quantity": "1個"
+            },
+            {
+                "name": "玉ねぎ",
+                "quantity": "1個"
+            },
+            {
+                "name": "人参",
+                "quantity": "0.5本"
+            },
+            {
+                "name": "ビーフシチューのもと",
+                "quantity": "0.5箱"
+            }
+        ]
+    },
+    {
+        "id": "cream-stew",
+        "name": "クリームシチュー",
+        "cook_with": "ホットクック",
+        "main_ingredient": "鶏肉",
+        "category": "カレー・シチュー",
+        "is_high_effort": false,
+        "uses_perishable_ingredients": false,
+        "seasonality": "all_year",
+        "ingredients": [
+            {
+                "name": "鶏もも肉",
+                "quantity": "250グラム"
+            },
+            {
+                "name": "じゃがいも",
+                "quantity": "1個"
+            },
+            {
+                "name": "玉ねぎ",
+                "quantity": "1個"
+            },
+            {
+                "name": "人参",
+                "quantity": "0.5本"
+            },
+            {
+                "name": "クリームシチューのもと",
+                "quantity": "0.5箱"
+            }
+        ]
+    },
+    {
+        "id": "twice-cooked-pork",
+        "name": "回鍋肉",
+        "cook_with": "ビストロ",
+        "main_ingredient": "豚肉",
+        "category": "クックドゥ",
+        "is_high_effort": false,
+        "uses_perishable_ingredients": false,
+        "seasonality": "all_year",
+        "ingredients": [
+            {
+                "name": "豚バラ肉",
+                "quantity": "200グラム"
+            },
+            {
+                "name": "キャベツ",
+                "quantity": "0.25玉"
+            },
+            {
+                "name": "ピーマン",
+                "quantity": "3個"
+            },
+            {
+                "name": "回鍋肉のもと",
+                "quantity": "1箱"
+            }
+        ]
+    },
+    {
+        "id": "mapo-tofu",
+        "name": "麻婆豆腐",
+        "cook_with": "ビストロ",
+        "main_ingredient": "豚肉",
+        "category": "クックドゥ",
+        "is_high_effort": false,
+        "uses_perishable_ingredients": false,
+        "seasonality": "all_year",
+        "ingredients": [
+            {
+                "name": "豚ひき肉",
+                "quantity": "200グラム"
+            },
+            {
+                "name": "絹豆腐",
+                "quantity": "1丁"
+            },
+            {
+                "name": "付け合わせ野菜（中華）",
+                "quantity": "2食"
+            },
+            {
+                "name": "麻婆豆腐のもと",
+                "quantity": "1箱"
+            }
+        ]
+    }
+]
