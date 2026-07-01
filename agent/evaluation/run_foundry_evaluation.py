@@ -25,6 +25,14 @@ from openai.types.evals.create_eval_jsonl_run_data_source_param import (
 EVALUATION_DIR = Path(__file__).parent
 DEFAULT_SINGLE_TURN_DATASET_PATH = EVALUATION_DIR / "dataset.jsonl"
 DEFAULT_SIMULATION_DATASET_PATH = EVALUATION_DIR / "simulation_scenarios.jsonl"
+DEFAULT_DATASET_VERSION = "1"
+DEFAULT_SINGLE_TURN_DATASET_NAME = "ai-dinner-planner-eval"
+DEFAULT_SIMULATION_DATASET_NAME = "ai-dinner-planner-conversation-eval"
+DEFAULT_NAME_PREFIX = "ai-dinner-planner"
+DEFAULT_EVALUATOR_NAME = "ai_dinner_planner_gt_binary_judge"
+DEFAULT_CONVERSATION_EVALUATOR_NAME = "ai_dinner_planner_conversation_binary_judge"
+DEFAULT_SIMULATION_NUM_CONVERSATIONS = "1"
+DEFAULT_POLL_SECONDS = 5
 
 SINGLE_TURN_DATA_SOURCE_CONFIG = {
     "type": "custom",
@@ -112,6 +120,13 @@ def env_value(name: str, default: str | None = None) -> str | None:
     return value if value else default
 
 
+def env_flag(name: str, default: bool = False) -> bool:
+    value = os.getenv(name)
+    if value is None:
+        return default
+    return value.strip().lower() in {"1", "true", "yes", "on"}
+
+
 def required_value(value: str | None, name: str) -> str:
     if not value:
         raise ValueError(f"{name} is required")
@@ -128,73 +143,17 @@ def build_parser() -> argparse.ArgumentParser:
         default="all",
         help="Evaluation suite to run.",
     )
-    parser.add_argument("--project-endpoint", default=env_value("FOUNDRY_PROJECT_ENDPOINT"))
-    parser.add_argument("--agent-name", default=env_value("FOUNDRY_AGENT_NAME"))
-    parser.add_argument("--agent-version", default=env_value("FOUNDRY_AGENT_VERSION"))
     parser.add_argument(
-        "--judge-model",
-        default=env_value("FOUNDRY_EVALUATION_MODEL", env_value("AZURE_AI_MODEL_DEPLOYMENT_NAME")),
-        help="Model deployment used by the LLM judge.",
+        "--update-datasets",
+        action="store_true",
+        default=env_flag("FOUNDRY_EVAL_UPDATE_DATASETS"),
+        help="Update existing dataset versions with the local dataset files.",
     )
     parser.add_argument(
-        "--single-turn-dataset-file",
-        type=Path,
-        default=DEFAULT_SINGLE_TURN_DATASET_PATH,
-    )
-    parser.add_argument(
-        "--simulation-dataset-file",
-        type=Path,
-        default=DEFAULT_SIMULATION_DATASET_PATH,
-    )
-    parser.add_argument(
-        "--dataset-version",
-        default=env_value("FOUNDRY_EVAL_DATASET_VERSION", "1"),
-        help="Dataset version used for all evaluation suites.",
-    )
-    parser.add_argument(
-        "--single-turn-dataset-name",
-        default=env_value("FOUNDRY_EVAL_SINGLE_TURN_DATASET_NAME", "ai-dinner-planner-eval"),
-    )
-    parser.add_argument(
-        "--simulation-dataset-name",
-        default=env_value(
-            "FOUNDRY_EVAL_SIMULATION_DATASET_NAME",
-            "ai-dinner-planner-simulation-eval",
-        ),
-    )
-    parser.add_argument(
-        "--name-prefix",
-        default=env_value("FOUNDRY_EVAL_NAME_PREFIX", "ai-dinner-planner"),
-        help="Prefix used for evaluation and run names.",
-    )
-    parser.add_argument(
-        "--evaluator-name",
-        default=env_value(
-            "FOUNDRY_EVAL_EVALUATOR_NAME",
-            "ai_dinner_planner_gt_binary_judge",
-        ),
-    )
-    parser.add_argument(
-        "--evaluator-version",
-        default=env_value("FOUNDRY_EVAL_EVALUATOR_VERSION"),
-        help="Turn evaluator version to use. If omitted, the latest existing version is reused.",
-    )
-    parser.add_argument(
-        "--conversation-evaluator-name",
-        default=env_value(
-            "FOUNDRY_EVAL_CONVERSATION_EVALUATOR_NAME",
-            "ai_dinner_planner_conversation_binary_judge",
-        ),
-    )
-    parser.add_argument(
-        "--conversation-evaluator-version",
-        default=env_value("FOUNDRY_EVAL_CONVERSATION_EVALUATOR_VERSION"),
-        help="Custom conversation evaluator version to use for generated simulation logs.",
-    )
-    parser.add_argument(
-        "--simulation-num-conversations",
-        type=int,
-        default=int(env_value("FOUNDRY_EVAL_SIMULATION_NUM_CONVERSATIONS", "1")),
+        "--update-evaluators",
+        action="store_true",
+        default=env_flag("FOUNDRY_EVAL_UPDATE_EVALUATORS"),
+        help="Register new custom evaluator versions with the local evaluator prompts.",
     )
     parser.add_argument(
         "--simulation-max-turns",
@@ -202,18 +161,45 @@ def build_parser() -> argparse.ArgumentParser:
         default=int(env_value("FOUNDRY_EVAL_SIMULATION_MAX_TURNS", "5")),
     )
     parser.add_argument(
-        "--protocol",
-        choices=["responses", "invocations"],
-        default=env_value("FOUNDRY_AGENT_PROTOCOL", "responses"),
-        help="Use responses for ResponsesHostServer agents, or invocations protocol.",
-    )
-    parser.add_argument(
         "--wait",
         action="store_true",
         help="Poll until the evaluation run finishes.",
     )
-    parser.add_argument("--poll-seconds", type=int, default=5)
     return parser
+
+
+def apply_runtime_defaults(args: argparse.Namespace) -> argparse.Namespace:
+    args.project_endpoint = env_value("FOUNDRY_PROJECT_ENDPOINT")
+    args.agent_name = env_value("FOUNDRY_AGENT_NAME")
+    args.agent_version = env_value("FOUNDRY_AGENT_VERSION")
+    args.judge_model = env_value(
+        "FOUNDRY_EVALUATION_MODEL",
+        env_value("AZURE_AI_MODEL_DEPLOYMENT_NAME"),
+    )
+    args.single_turn_dataset_file = DEFAULT_SINGLE_TURN_DATASET_PATH
+    args.simulation_dataset_file = DEFAULT_SIMULATION_DATASET_PATH
+    args.dataset_version = env_value("FOUNDRY_EVAL_DATASET_VERSION", DEFAULT_DATASET_VERSION)
+    args.single_turn_dataset_name = env_value(
+        "FOUNDRY_EVAL_SINGLE_TURN_DATASET_NAME",
+        DEFAULT_SINGLE_TURN_DATASET_NAME,
+    )
+    args.simulation_dataset_name = env_value(
+        "FOUNDRY_EVAL_SIMULATION_DATASET_NAME",
+        DEFAULT_SIMULATION_DATASET_NAME,
+    )
+    args.name_prefix = env_value("FOUNDRY_EVAL_NAME_PREFIX", DEFAULT_NAME_PREFIX)
+    args.evaluator_name = env_value("FOUNDRY_EVAL_EVALUATOR_NAME", DEFAULT_EVALUATOR_NAME)
+    args.evaluator_version = env_value("FOUNDRY_EVAL_EVALUATOR_VERSION")
+    args.conversation_evaluator_name = env_value(
+        "FOUNDRY_EVAL_CONVERSATION_EVALUATOR_NAME",
+        DEFAULT_CONVERSATION_EVALUATOR_NAME,
+    )
+    args.conversation_evaluator_version = env_value("FOUNDRY_EVAL_CONVERSATION_EVALUATOR_VERSION")
+    args.simulation_num_conversations = int(
+        env_value("FOUNDRY_EVAL_SIMULATION_NUM_CONVERSATIONS", DEFAULT_SIMULATION_NUM_CONVERSATIONS)
+    )
+    args.poll_seconds = DEFAULT_POLL_SECONDS
+    return args
 
 
 def create_turn_evaluator_version() -> EvaluatorVersion:
@@ -332,12 +318,14 @@ def upload_or_get_dataset(
     name: str,
     version: str,
     dataset_file: Path,
+    update_dataset: bool,
 ) -> str:
     try:
         dataset = project_client.datasets.upload_file(
             name=name,
             version=version,
             file_path=str(dataset_file),
+            overwrite=update_dataset,
         )
     except ResourceExistsError:
         dataset = project_client.datasets.get(name=name, version=version)
@@ -359,20 +347,27 @@ def resolve_custom_evaluator_version(
     name: str,
     pinned_version: str | None,
     evaluator_version: EvaluatorVersion,
+    update_evaluator: bool,
     label: str,
 ) -> str:
-    if pinned_version:
+    if update_evaluator:
+        evaluator = project_client.beta.evaluators.create_version(
+            name=name,
+            evaluator_version=evaluator_version,
+        )
+    elif pinned_version:
         evaluator = project_client.beta.evaluators.get_version(name=name, version=pinned_version)
     else:
         latest_version = get_latest_evaluator_version(project_client, name)
-        evaluator = (
-            project_client.beta.evaluators.get_version(name=name, version=latest_version)
-            if latest_version
-            else project_client.beta.evaluators.create_version(
+        if latest_version:
+            evaluator = project_client.beta.evaluators.get_version(
+                name=name, version=latest_version
+            )
+        else:
+            evaluator = project_client.beta.evaluators.create_version(
                 name=name,
                 evaluator_version=evaluator_version,
             )
-        )
     print(f"{label} evaluator id: {evaluator.id}")
     print(f"{label} evaluator version: {evaluator.version}")
     return evaluator.version
@@ -475,6 +470,7 @@ def run_single_turn(
         args.evaluator_name,
         args.evaluator_version,
         create_turn_evaluator_version(),
+        args.update_evaluators,
         "turn",
     )
     dataset_id = upload_or_get_dataset(
@@ -482,26 +478,23 @@ def run_single_turn(
         name=args.single_turn_dataset_name,
         version=args.dataset_version,
         dataset_file=args.single_turn_dataset_file.resolve(),
+        update_dataset=args.update_datasets,
     )
     print(f"[single-turn] dataset id: {dataset_id}")
 
-    input_messages = (
-        {"message": "{{item.query}}"}
-        if args.protocol == "invocations"
-        else {
-            "type": "template",
-            "template": [
-                {
-                    "type": "message",
-                    "role": "user",
-                    "content": {
-                        "type": "input_text",
-                        "text": "{{item.query}}",
-                    },
-                }
-            ],
-        }
-    )
+    input_messages = {
+        "type": "template",
+        "template": [
+            {
+                "type": "message",
+                "role": "user",
+                "content": {
+                    "type": "input_text",
+                    "text": "{{item.query}}",
+                },
+            }
+        ],
+    }
     run_eval(
         openai_client=openai_client,
         suite="single-turn",
@@ -541,6 +534,7 @@ def run_simulation(
         name=args.simulation_dataset_name,
         version=args.dataset_version,
         dataset_file=args.simulation_dataset_file.resolve(),
+        update_dataset=args.update_datasets,
     )
     print(f"[simulation] dataset id: {dataset_id}")
 
@@ -608,6 +602,7 @@ def run_custom_conversation_judge(
         args.conversation_evaluator_name,
         args.conversation_evaluator_version,
         create_conversation_evaluator_version(),
+        args.update_evaluators,
         "conversation",
     )
     run_eval(
@@ -650,13 +645,13 @@ def validate_dataset_files(args: argparse.Namespace) -> None:
 
 
 def main() -> None:
-    args = build_parser().parse_args()
+    args = apply_runtime_defaults(build_parser().parse_args())
     args.project_endpoint = required_value(
         args.project_endpoint,
-        "--project-endpoint or FOUNDRY_PROJECT_ENDPOINT",
+        "FOUNDRY_PROJECT_ENDPOINT",
     )
-    args.agent_name = required_value(args.agent_name, "--agent-name or FOUNDRY_AGENT_NAME")
-    args.judge_model = required_value(args.judge_model, "--judge-model or FOUNDRY_EVALUATION_MODEL")
+    args.agent_name = required_value(args.agent_name, "FOUNDRY_AGENT_NAME")
+    args.judge_model = required_value(args.judge_model, "FOUNDRY_EVALUATION_MODEL")
     validate_dataset_files(args)
 
     credential = DefaultAzureCredential()

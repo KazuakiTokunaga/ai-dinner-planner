@@ -1,7 +1,7 @@
 ---
 title: 評価概要
 description: Microsoft Foundry Hosted Agent の ground truth 評価データセットと binary LLM judge 評価の概要
-ms.date: 2026-06-26
+ms.date: 2026-07-01
 ms.topic: concept
 ---
 
@@ -73,6 +73,12 @@ conversation simulation は次の順に処理する。
 4. 登録済みメニューの優先、unsupported fact の抑制、Web 検索の使い方、ユーザー目的の達成を binary 評価する。
 
 Dataset version がすでに存在する場合は再アップロードせず、既存 version を再利用する。
+JSONL の変更を Foundry Dataset に反映したい場合は、`--update-datasets` を指定する。
+このオプションを付けると、既存の dataset `name/version` を削除せず、現在の JSONL で同じ version を更新する。
+
+custom evaluator の prompt や metric 定義の変更を Foundry に反映したい場合は、`--update-evaluators` を指定する。
+このオプションを付けると、新しい evaluator version を登録して、その version を今回の評価 run で使う。
+指定しない場合は、既存の latest evaluator version を取得するだけで、Foundry 側の evaluator は更新しない。
 
 ## Judge の判定基準
 
@@ -120,34 +126,68 @@ uv run python -m agent.evaluation.run_foundry_evaluation --suite single-turn --w
 uv run python -m agent.evaluation.run_foundry_evaluation --suite simulation --wait
 ```
 
-主な設定値は環境変数または CLI オプションで指定できる。
+評価データセットを更新してから実行する場合は `--update-datasets` を指定する。
 
-| 環境変数 | CLI オプション | 内容 |
-|----------|----------------|------|
-| `FOUNDRY_PROJECT_ENDPOINT` | `--project-endpoint` | Foundry project endpoint |
-| `FOUNDRY_AGENT_NAME` | `--agent-name` | 評価対象の Hosted Agent 名 |
-| `FOUNDRY_AGENT_VERSION` | `--agent-version` | 評価対象の Hosted Agent version |
-| `FOUNDRY_EVALUATION_MODEL` | `--judge-model` | judge に使う model deployment 名 |
-| `FOUNDRY_EVAL_SINGLE_TURN_DATASET_NAME` | `--single-turn-dataset-name` | single-turn 用 Foundry Dataset 名 |
-| `FOUNDRY_EVAL_SIMULATION_DATASET_NAME` | `--simulation-dataset-name` | simulation 用 Foundry Dataset 名 |
-| `FOUNDRY_EVAL_DATASET_VERSION` | `--dataset-version` | Foundry Dataset version |
-| `FOUNDRY_EVAL_EVALUATOR_NAME` | `--evaluator-name` | custom evaluator 名 |
-| `FOUNDRY_EVAL_EVALUATOR_VERSION` | `--evaluator-version` | single-turn で使う custom evaluator version |
-| `FOUNDRY_EVAL_CONVERSATION_EVALUATOR_NAME` | `--conversation-evaluator-name` | simulation 後段で使う custom conversation evaluator 名 |
-| `FOUNDRY_EVAL_CONVERSATION_EVALUATOR_VERSION` | `--conversation-evaluator-version` | simulation 後段で使う custom conversation evaluator version |
-| `FOUNDRY_AGENT_PROTOCOL` | `--protocol` | `responses` または `invocations` |
+```bash
+uv run python -m agent.evaluation.run_foundry_evaluation --wait --update-datasets
+```
 
-conversation simulation の生成数と最大ターン数は、`--simulation-num-conversations` と
-`--simulation-max-turns` で調整できる。
+custom evaluator の新しい version を登録してから実行する場合は `--update-evaluators` を指定する。
 
-`--evaluator-version` を指定すると、その custom evaluator version を固定して評価する。
+```bash
+uv run python -m agent.evaluation.run_foundry_evaluation --wait --update-evaluators
+```
+
+`--update-datasets` を指定しない場合、同じ Dataset name と version が Foundry project に存在すると、
+ローカル JSONL は再アップロードされず既存 version が使われる。
+`--update-evaluators` を指定しない場合、custom evaluator は既存の latest version が使われる。
+指定した場合は、single-turn 用 evaluator と custom conversation evaluator の両方で新しい version を登録する。
+
+CLI オプションは、実行時に切り替える頻度が高いものだけを公開している。
+
+| CLI オプション | 内容 |
+|----------------|------|
+| `--suite` | `single-turn`、`simulation`、`all` のどれを実行するか |
+| `--update-datasets` | 既存 Dataset version を現在の JSONL で更新するかどうか |
+| `--update-evaluators` | 現在の prompt と metric 定義で新しい custom evaluator version を登録するかどうか |
+| `--simulation-max-turns` | conversation simulation の最大ターン数 |
+| `--wait` | evaluation run の完了まで待機して結果を表示するかどうか |
+
+その他の設定値は、環境変数があればその値を使い、ない場合はスクリプト内の既定値を使う。
+
+| 環境変数 | 既定値 | 内容 |
+|----------|--------|------|
+| `FOUNDRY_PROJECT_ENDPOINT` | 必須 | Foundry project endpoint |
+| `FOUNDRY_AGENT_NAME` | 必須 | 評価対象の Hosted Agent 名 |
+| `FOUNDRY_AGENT_VERSION` | 未指定 | 評価対象の Hosted Agent version |
+| `FOUNDRY_EVALUATION_MODEL` | `AZURE_AI_MODEL_DEPLOYMENT_NAME` | judge に使う model deployment 名 |
+| `FOUNDRY_EVAL_SINGLE_TURN_DATASET_NAME` | `ai-dinner-planner-eval` | single-turn 用 Foundry Dataset 名 |
+| `FOUNDRY_EVAL_SIMULATION_DATASET_NAME` | `ai-dinner-planner-conversation-eval` | simulation 用 Foundry Dataset 名 |
+| `FOUNDRY_EVAL_DATASET_VERSION` | `1` | Foundry Dataset version |
+| `FOUNDRY_EVAL_UPDATE_DATASETS` | `false` | 既存 Dataset version を現在の JSONL で更新するかどうか |
+| `FOUNDRY_EVAL_UPDATE_EVALUATORS` | `false` | 現在の prompt と metric 定義で新しい custom evaluator version を登録するかどうか |
+| `FOUNDRY_EVAL_EVALUATOR_NAME` | `ai_dinner_planner_gt_binary_judge` | custom evaluator 名 |
+| `FOUNDRY_EVAL_EVALUATOR_VERSION` | 未指定 | single-turn で使う custom evaluator version |
+| `FOUNDRY_EVAL_CONVERSATION_EVALUATOR_NAME` | `ai_dinner_planner_conversation_binary_judge` | simulation 後段で使う custom conversation evaluator 名 |
+| `FOUNDRY_EVAL_CONVERSATION_EVALUATOR_VERSION` | 未指定 | simulation 後段で使う custom conversation evaluator version |
+| `FOUNDRY_EVAL_SIMULATION_NUM_CONVERSATIONS` | `1` | conversation simulation の生成 conversation 数 |
+| `FOUNDRY_EVAL_SIMULATION_MAX_TURNS` | `5` | conversation simulation の最大ターン数 |
+
+conversation simulation の最大ターン数は `--simulation-max-turns` で一時的に変更できる。
+生成 conversation 数を変更する場合は `FOUNDRY_EVAL_SIMULATION_NUM_CONVERSATIONS` を指定する。
+
+`FOUNDRY_EVAL_EVALUATOR_VERSION` を指定すると、その custom evaluator version を固定して評価する。
 指定しない場合は、既存の latest version を再利用する。指定した evaluator が存在しない場合だけ、
 初回実行時に新しい version を作成する。
+`--update-evaluators` を指定した場合は、固定 version の有無にかかわらず新しい version を登録し、
+その version を今回の評価 run で使う。
 
-custom conversation evaluator も同じ方針で version を扱う。`--conversation-evaluator-version` を
+custom conversation evaluator も同じ方針で version を扱う。`FOUNDRY_EVAL_CONVERSATION_EVALUATOR_VERSION` を
 指定しない場合は latest version を再利用し、存在しない場合だけ初回実行時に version 1 を作成する。
+`--update-evaluators` を指定した場合は、custom conversation evaluator でも新しい version を登録して使う。
 
-`ResponsesHostServer` で動く Hosted Agent を評価する場合は、既定値の `responses` を使う。
+このプロジェクトの Hosted Agent は `ResponsesHostServer` で動くため、評価スクリプトは
+Responses protocol の入力形式を固定で使う。
 
 ## 出力の見方
 
